@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Garage to Gym</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <strong>Garage to Gym</strong>
+        <span id="stageName" class="chip"></span>
+      </div>
+      <div class="stats">
+        <div class="stat" title="Kontostand"><span class="lbl">Kasse</span><span id="sMoney" class="val"></span></div>
+        <div class="stat" title="Mitglieder / Platz"><span class="lbl">Mitglieder</span><span id="sMembers" class="val"></span></div>
+        <div class="stat" title="Durchschnittliche Zufriedenheit aller Mitglieder"><span class="lbl">Zufriedenheit</span><span id="sSat" class="val"></span></div>
+        <div class="stat" title="Ruf aus der Zufriedenheit der letzten 3 Monate"><span class="lbl">Ruf</span><span id="sRep" class="val stars"></span></div>
+        <div class="stat" title="Sauberkeit des Studios"><span class="lbl">Sauberkeit</span><span id="sClean" class="val"></span></div>
+        <div class="stat" title="Datum und Uhrzeit"><span class="lbl" id="sMonth"></span><span id="sTime" class="val"></span></div>
+      </div>
+      <div class="speed" id="speedBtns" role="group" aria-label="Tempo">
+        <button data-speed="0" title="Pause (Leertaste)">❚❚</button>
+        <button data-speed="1" title="Tempo 1× (Taste 1)">1×</button>
+        <button data-speed="2" title="Tempo 2× (Taste 2)">2×</button>
+        <button data-speed="4" title="Tempo 4× (Taste 3)">4×</button>
+      </div>
+      <div class="menu">
+        <button id="btnSave" title="Im Browser speichern">Speichern</button>
+        <button id="btnNew" title="Neues Spiel">Neu</button>
+        <button id="btnHelp" title="Hilfe">?</button>
+      </div>
+    </header>
+
+    <main>
+      <aside id="buildPanel" class="panel">
+        <div class="panel-head">
+          <h2>Bauen</h2>
+          <button class="collapse" data-collapse="buildPanel" title="Einklappen">‹</button>
+        </div>
+        <div class="panel-body">
+          <div id="deviceList" class="device-list"></div>
+          <div class="tools">
+            <button id="btnRotate" title="Drehen (R)">⟳ Drehen</button>
+            <button id="btnCancel" title="Abbrechen (Esc)">✕ Abbrechen</button>
+          </div>
+          <h3>Ansicht</h3>
+          <div class="overlay-btns" id="overlayBtns">
+            <button data-overlay="none" class="active">Normal</button>
+            <button data-overlay="auslastung">Auslastung</button>
+            <button data-overlay="wartezeit">Wartezeit</button>
+          </div>
+          <p class="hint" id="buildHint"></p>
+        </div>
+      </aside>
+
+      <section id="stage">
+        <canvas id="game"></canvas>
+        <div id="statusLine"></div>
+        <div id="toasts"></div>
+        <button id="openBuild" class="drawer-btn left">Bauen</button>
+        <button id="openInfo" class="drawer-btn right">Studio</button>
+      </section>
+
+      <aside id="infoPanel" class="panel">
+        <div class="panel-head">
+          <h2>Studio</h2>
+          <button class="collapse" data-collapse="infoPanel" title="Einklappen">›</button>
+        </div>
+        <div class="panel-body">
+          <section id="selInfo" class="card hidden"></section>
+
+          <section class="card">
+            <h3>Monatsbeitrag</h3>
+            <div class="fee-row">
+              <input type="range" id="feeSlider" min="10" max="80" step="1">
+              <span id="feeValue" class="fee-value"></span>
+            </div>
+            <div id="feeHints" class="fee-hints"></div>
+          </section>
+
+          <section class="card">
+            <h3>Ziele</h3>
+            <div id="goals"></div>
+          </section>
+
+          <section class="card">
+            <h3>Personal</h3>
+            <div id="staff"></div>
+          </section>
+
+          <section class="card">
+            <h3>Werbung</h3>
+            <div id="ads"></div>
+          </section>
+
+          <section class="card">
+            <h3>Dieser Monat</h3>
+            <div id="ledger"></div>
+            <button id="btnLastReport" class="link hidden">Letzten Monatsbericht zeigen</button>
+          </section>
+        </div>
+      </aside>
+    </main>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
