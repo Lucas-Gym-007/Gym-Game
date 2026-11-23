@@ -25,6 +25,10 @@ Alternativ `index.html` direkt im Browser öffnen (Speichern im Browser funktion
 | Abbrechen | `Esc` oder Rechtsklick |
 | Putzen | braune Flecken anklicken |
 | Gedanken lesen | Figur anklicken |
+| Kamera drehen (3D) | `Q` / `E` |
+| Zoomen (3D) | Mausrad |
+| Kamera verschieben (3D) | Pfeiltasten oder mittlere Maustaste ziehen |
+| 3D / 2D-Plan umschalten | links unter „Ansicht“ |
 | Tempo | `Leertaste` Pause, `1` / `2` / `3` für 1×, 2×, 4× |
 
 ## Was in 0.1 drin ist
@@ -37,6 +41,7 @@ Alternativ `index.html` direkt im Browser öffnen (Speichern im Browser funktion
 - Beitragsregler, Beitrittsformel, Tageskarten, Werbung, Monatsabrechnung mit Bericht und den häufigsten Beschwerden
 - Sauberkeit: in der Garage putzt du selbst, im Kellerstudio Reinigungskräfte in Früh- und Spätschicht
 - Zugang: Geräte ohne erreichbares freies Nachbarfeld werden rot und bleiben außer Betrieb
+- **3D-Ansicht** (Three.js) mit modellierten Geräten, animierten Figuren, Schatten und Umgebungslicht; alternativ der schlichte 2D-Plan
 - Ansichten für Auslastung und Wartezeit, um Engpässe zu finden
 - Tempo Pause / 1× / 2× / 4×, automatisches Speichern im Browser (`localStorage`)
 
@@ -48,11 +53,22 @@ Bewusst noch nicht drin: Einrichtung (Umkleide, Empfang, Theke …), Studio und 
 |---|---|
 | `js/data.js` | alle Zahlen und Tabellen aus dem Konzept (Geräte, Typen, Stufen, Balancing) |
 | `js/sim.js` | Simulation ohne DOM: Raster, Wegsuche, Besuche, Wirtschaft, Monatsende |
-| `js/render.js` | Zeichnen auf dem Canvas |
+| `js/render.js` | 2D-Plan auf dem Canvas |
+| `src/render3d.js` | 3D-Ansicht mit Three.js (Quelle) |
+| `js/render3d.bundle.js` | gebündelte 3D-Ansicht inkl. Three.js – wird mit `npm run build` erzeugt und mit eingecheckt, damit das Spiel ohne Build läuft |
 | `js/ui.js` | Panels, Maus/Tastatur, Dialoge |
 | `js/main.js` | Spielschleife und Speichern |
 
 Der Spielstand ist ein reines JSON-Objekt; `sim.js` läuft auch in Node.
+
+## 3D-Ansicht bauen
+
+Nur nötig, wenn du `src/render3d.js` änderst:
+
+```bash
+npm install
+npm run build
+```
 
 ## Tests
 

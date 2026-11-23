@@ -47,6 +47,15 @@
             <button id="btnCancel" title="Abbrechen (Esc)">✕ Abbrechen</button>
           </div>
           <h3>Ansicht</h3>
+          <div class="overlay-btns" id="viewBtns">
+            <button data-view="3d">3D</button>
+            <button data-view="2d">2D-Plan</button>
+          </div>
+          <div class="overlay-btns" id="camBtns">
+            <button data-cam="-1" title="Kamera nach links drehen (Q)">⟲ Q</button>
+            <button data-cam="reset" title="Kamera zurücksetzen">Mitte</button>
+            <button data-cam="1" title="Kamera nach rechts drehen (E)">E ⟳</button>
+          </div>
           <div class="overlay-btns" id="overlayBtns">
             <button data-overlay="none" class="active">Normal</button>
             <button data-overlay="auslastung">Auslastung</button>
@@ -58,6 +67,7 @@
 
       <section id="stage">
         <canvas id="game"></canvas>
+        <canvas id="game3d"></canvas>
         <div id="statusLine"></div>
         <div id="toasts"></div>
         <button id="openBuild" class="drawer-btn left">Bauen</button>
@@ -113,6 +123,7 @@
   <script src="js/data.js"></script>
   <script src="js/sim.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/render3d.bundle.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>

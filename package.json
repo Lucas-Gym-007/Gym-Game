@@ -5,7 +5,12 @@
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.js",
+    "build": "esbuild src/render3d.js --bundle --minify --format=iife --target=es2020 --outfile=js/render3d.bundle.js",
     "start": "python3 -m http.server 8080"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "esbuild": "^0.25.10",
+    "three": "^0.186.1"
+  }
 }

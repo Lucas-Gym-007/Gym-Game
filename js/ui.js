@@ -18,6 +18,8 @@
 
   let app = null;          // { s, speed, setSpeed, save, newGame }
   let canvas, ctx, view;
+  let canvas3d = null, r3d = null;
+  let viewMode = '3d';
   let dpr = 1;
   const ui = {
     placing: null, rot: 0, carry: null, press: null, hover: null, ghost: null,
@@ -47,13 +49,49 @@
     app = appRef;
     canvas = $('game');
     ctx = canvas.getContext('2d');
+    canvas3d = $('game3d');
+    try {
+      if (root.GymRender3D) r3d = root.GymRender3D.create(canvas3d);
+    } catch (err) {
+      console.warn('3D-Ansicht nicht verfügbar, nutze 2D:', err);
+      r3d = null;
+    }
+    try { viewMode = localStorage.getItem('garage-to-gym-view') || '3d'; } catch (err) { /* egal */ }
 
-    canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('pointerleave', () => { if (!ui.carry) ui.hover = null; });
-    canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); cancelAction(); });
+    for (const c of [canvas, canvas3d]) {
+      c.addEventListener('pointermove', onPointerMove);
+      c.addEventListener('pointerdown', onPointerDown);
+      c.addEventListener('pointerup', onPointerUp);
+      c.addEventListener('pointerleave', () => { if (!ui.carry) ui.hover = null; });
+      c.addEventListener('contextmenu', (e) => { e.preventDefault(); cancelAction(); });
+    }
+    // Kamera mit gedrückter mittlerer Maustaste verschieben
+    let panDrag = null;
+    canvas3d.addEventListener('pointerdown', (e) => { if (e.button === 1 && is3D()) { e.preventDefault(); panDrag = { x: e.clientX, y: e.clientY }; } });
+    window.addEventListener('pointermove', (e) => {
+      if (!panDrag) return;
+      const k = r3d.pixelsToTiles(1);
+      r3d.pan(-(e.clientX - panDrag.x) * k, (e.clientY - panDrag.y) * k);
+      panDrag = { x: e.clientX, y: e.clientY };
+    });
+    window.addEventListener('pointerup', (e) => { if (e.button === 1) panDrag = null; });
+    canvas3d.addEventListener('wheel', (e) => {
+      if (!is3D()) return;
+      e.preventDefault();
+      r3d.zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    }, { passive: false });
     window.addEventListener('keydown', onKey);
+
+    $('viewBtns').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-view]');
+      if (!b) return;
+      setViewMode(b.dataset.view);
+    });
+    $('camBtns').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-cam]');
+      if (!b || !is3D()) return;
+      if (b.dataset.cam === 'reset') r3d.resetView(); else r3d.rotate(Number(b.dataset.cam));
+    });
 
     $('speedBtns').addEventListener('click', (e) => {
       const b = e.target.closest('button[data-speed]');
@@ -151,8 +189,33 @@
   // ---------------------------------------------------------------- Eingaben
 
   function pointerPos(e) {
-    const r = canvas.getBoundingClientRect();
+    const r = (is3D() ? canvas3d : canvas).getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function is3D() { return viewMode === '3d' && !!r3d; }
+
+  function setViewMode(mode) {
+    viewMode = mode;
+    try { localStorage.setItem('garage-to-gym-view', mode); } catch (err) { /* egal */ }
+    refreshPanels();
+  }
+
+  function tileAt(p) {
+    if (is3D()) return r3d.screenToTile(p.x, p.y);
+    return view ? R.screenToTile(view, p.x, p.y) : null;
+  }
+
+  function agentAtPos(s, p) {
+    return is3D() ? r3d.agentAt(s, p.x, p.y) : R.agentAt(view, s, p.x, p.y);
+  }
+
+  function deviceAtPos(p, t) {
+    if (is3D()) {
+      const id = r3d.deviceAt(p.x, p.y);
+      if (id) return Sim.deviceById(S(), id);
+    }
+    return deviceAtTile(t);
   }
 
   function deviceAtTile(t) {
@@ -164,24 +227,25 @@
   }
 
   function onPointerMove(e) {
-    if (!view) return;
     const p = pointerPos(e);
-    ui.hover = R.screenToTile(view, p.x, p.y);
+    ui.hover = tileAt(p);
+    if (!ui.hover) return;
     if (ui.press && !ui.carry && Math.hypot(p.x - ui.press.sx, p.y - ui.press.sy) > 6) startCarry();
   }
 
   function onPointerDown(e) {
-    if (!view || modalKind) return;
-    if (e.button === 2) return;
+    if (modalKind) return;
+    if (e.button === 2 || e.button === 1) return;
     const s = S();
     const p = pointerPos(e);
-    ui.hover = R.screenToTile(view, p.x, p.y);
-    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
+    ui.hover = tileAt(p);
+    if (!ui.hover) return;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* egal */ }
 
-    if (ui.placing) { tryPlace(); return; }
+    if (ui.placing) { updateGhost(); tryPlace(); return; }
 
-    const agent = R.agentAt(view, s, p.x, p.y);
-    const dev = deviceAtTile(ui.hover);
+    const agent = agentAtPos(s, p);
+    const dev = deviceAtPos(p, ui.hover);
     if (agent) {
       ui.selectedAgent = agent.id;
       ui.selectedDevice = null;
@@ -191,7 +255,12 @@
     if (dev) {
       ui.selectedDevice = dev.id;
       ui.selectedAgent = null;
-      ui.press = { devId: dev.id, sx: p.x, sy: p.y, off: { x: ui.hover.x - dev.x, y: ui.hover.y - dev.y } };
+      const fp = Sim.footprint(dev.kind, dev.x, dev.y, dev.rot);
+      const off = {
+        x: Math.max(0, Math.min(fp.w - 1, ui.hover.x - dev.x)),
+        y: Math.max(0, Math.min(fp.h - 1, ui.hover.y - dev.y)),
+      };
+      ui.press = { devId: dev.id, sx: p.x, sy: p.y, off };
       refreshPanels();
       return;
     }
@@ -276,6 +345,16 @@
     if (e.target && e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
     const k = e.key.toLowerCase();
     if (k === 'r') rotateAction();
+    else if (k === 'q' && is3D()) r3d.rotate(-1);
+    else if (k === 'e' && is3D()) r3d.rotate(1);
+    else if (e.key.startsWith('Arrow') && is3D()) {
+      e.preventDefault();
+      const step = 1;
+      if (e.key === 'ArrowLeft') r3d.pan(-step, 0);
+      if (e.key === 'ArrowRight') r3d.pan(step, 0);
+      if (e.key === 'ArrowUp') r3d.pan(0, step);
+      if (e.key === 'ArrowDown') r3d.pan(0, -step);
+    }
     else if (e.key === 'Escape') cancelAction();
     else if (e.key === ' ') { e.preventDefault(); app.setSpeed(app.speed === 0 ? (app.prevSpeed || 1) : 0); }
     else if (k === '1') app.setSpeed(1);
@@ -346,6 +425,18 @@
 
   function render() {
     const s = S();
+    if (ui.selectedAgent && !Sim.agentById(s, ui.selectedAgent)) ui.selectedAgent = null;
+    if (ui.selectedDevice && !Sim.deviceById(s, ui.selectedDevice)) ui.selectedDevice = null;
+    const use3d = is3D();
+    canvas.style.display = use3d ? 'none' : 'block';
+    canvas3d.style.display = use3d ? 'block' : 'none';
+    if (use3d) {
+      updateGhost();
+      r3d.render(s, ui);
+      updateStatusLine();
+      updateToasts();
+      return;
+    }
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
     dpr = window.devicePixelRatio || 1;
     if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
@@ -354,8 +445,6 @@
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     view = R.computeView(canvas, s);
-    if (ui.selectedAgent && !Sim.agentById(s, ui.selectedAgent)) ui.selectedAgent = null;
-    if (ui.selectedDevice && !Sim.deviceById(s, ui.selectedDevice)) ui.selectedDevice = null;
     updateGhost();
     R.draw(ctx, view, s, ui);
     updateStatusLine();
@@ -427,6 +516,11 @@
       b.classList.toggle('poor', Sim.isUnlocked(s, kind) && s.money < D.DEVICES[kind].price);
     }
     $('btnRotate').disabled = !(ui.placing || ui.carry || ui.selectedDevice);
+    for (const b of $('viewBtns').querySelectorAll('button')) {
+      b.classList.toggle('active', b.dataset.view === (is3D() ? '3d' : '2d'));
+      if (b.dataset.view === '3d') b.disabled = !r3d;
+    }
+    $('camBtns').classList.toggle('hidden', !is3D());
     $('btnCancel').disabled = !(ui.placing || ui.carry || ui.selectedDevice || ui.selectedAgent);
 
     // Beitrag
@@ -693,6 +787,7 @@
         <li>Geräte mit der Maus ziehen = kostenlos verschieben. Verkaufen bringt 50 % zurück.</li>
         <li>Figuren anklicken zeigt ihre Gedanken. Braune Flecken anklicken = putzen.</li>
         <li><kbd>Leertaste</kbd> Pause, <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> Tempo 1×, 2×, 4×.</li>
+        <li>3D-Ansicht: <kbd>Q</kbd> / <kbd>E</kbd> dreht die Kamera, Mausrad zoomt, Pfeiltasten oder mittlere Maustaste verschieben. Links unter „Ansicht“ kannst du auf den 2D-Plan umschalten.</li>
       </ul>
       <h4>Tipps</h4>
       <ul>
@@ -708,5 +803,6 @@
     init, reset, render, refreshPanels, flash,
     showReport, showGameOver, showHelp, isModalOpen,
     get modalKind() { return modalKind; },
+    get renderer3d() { return is3D() ? r3d : null; },
   };
 })(this);
